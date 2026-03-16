@@ -3,54 +3,39 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { useFirebase } from '@/lib/firebase/client-provider'; // Import the new, correct hook
+import { signUpWithEmailAndPassword } from '@/app/actions';
 import styles from '@/app/login/Login.module.css';
 
 export default function SignUp() {
-  const { auth, db } = useFirebase(); // Use the new hook to get auth and db
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [userId, setUserId] = useState('');
   const [error, setError] = useState('');
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
 
-      // Create a user document in Firestore
-      await setDoc(doc(db, 'users', user.uid), {
-        email: user.email,
-        role: 'user', // Assign a default role
-      });
+    const result = await signUpWithEmailAndPassword(email, password, userId);
 
-      router.push('/');
-    } catch (err: any) {
-        console.error("Sign Up Error:", err);
-        if (err.code === 'auth/email-already-in-use') {
-            setError('이미 사용 중인 이메일입니다.');
-        } else if (err.code === 'auth/weak-password') {
-            setError('비밀번호는 6자리 이상이어야 합니다.');
-        } else {
-            setError('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
-        }
+    if (result.error) {
+      setError(result.error);
+    } else {
+      router.push('/login');
     }
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.loginBox}>
-        <h1 className={styles.title}>Create Account</h1>
+        <h1 className={styles.title}>Sign Up</h1>
         <form onSubmit={handleSignUp} className={styles.form}>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
+            placeholder="이메일"
             required
             className={styles.input}
           />
@@ -58,7 +43,15 @@ export default function SignUp() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
+            placeholder="비밀번호"
+            required
+            className={styles.input}
+          />
+          <input
+            type="text"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            placeholder="아이디"
             required
             className={styles.input}
           />

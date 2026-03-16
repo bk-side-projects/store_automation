@@ -23,23 +23,44 @@
 - **결과:** **실패**. `devDependencies`를 제거하자, 빌드에 필수적인 다른 패키지(예: `typescript`, `tailwindcss` 등)를 찾지 못해 새로운 빌드 오류가 발생했습니다.
 - **분석:** `devDependencies`는 개발 단계뿐만 아니라 Next.js의 프로덕션 빌드 과정에서도 필요한 경우가 많습니다. 특히 `typescript` 컴파일, `tailwindcss` 빌드 등에 필수적인 의존성을 포함하고 있으므로, 무조건 제거하는 것은 올바른 해결책이 아닙니다.
 
-## 3. 근본 원인 (추정)
+### 시도 3: 서버/클라이언트 환경 변수 설정 오류 (`auth/invalid-api-key`)
 
-현재까지의 분석 결과, 빌드 실패의 근본 원인은 다음과 같은 복합적인 요인에 있는 것으로 추정됩니다.
+- **현상:** `/_not-found` 페이지 사전 렌더링 중 `auth/invalid-api-key` 오류 발생.
+- **분석:** 이 오류는 **서버 사이드 렌더링(SSR) 과정에서 클라이언트용 Firebase 설정을 사용하려고 할 때** 발생합니다. 빌드 프로세스는 서버 환경에서 실행되는데, 이때 클라이언트(브라우저)에서만 사용해야 하는 `NEXT_PUBLIC_` 접두사가 붙은 환경 변수를 제대로 불러오지 못해 Firebase 초기화에 실패한 것입니다.
+- **조치 1 (잘못된 시도):** `lib/firebase/client-provider.tsx`에서 `JSON.parse(process.env.NEXT_PUBLIC_FIREBASE_WEBAPP_CONFIG!)` 코드를 사용하여 App Hosting이 제공하는 환경 변수를 직접 파싱하려고 시도.
+- **결과 1:** **실패**. `SyntaxError: "undefined" is not valid JSON` 오류 발생. App Hosting 빌드 환경은 `FIREBASE_WEBAPP_CONFIG`라는 변수를 제공하지만, Next.js 클라이언트 코드에서 이를 인식하려면 `NEXT_PUBLIC_` 접두사가 필요합니다. 빌드 시점에는 `NEXT_PUBLIC_FIREBASE_WEBAPP_CONFIG` 변수가 존재하지 않으므로 `undefined`가 되어 JSON 파싱 오류로 이어진 것입니다.
 
-1.  **Next.js 및 관련 패키지 버전:** 최신 Next.js 버전과 다른 의존성 패키지들(특히 `eslint`, `typescript` 등) 간의 미세한 호환성 문제가 App Hosting의 빌드 환경에서 증폭될 수 있습니다.
-2.  **App Hosting 빌드 환경의 특수성:** Firebase App Hosting의 빌드 환경은 로컬 개발 환경과 다를 수 있습니다. 특정 버전의 Node.js, `npm` 또는 시스템 라이브러리를 사용할 수 있으며, 이로 인해 로컬에서는 발생하지 않던 문제가 발생할 수 있습니다.
-3.  **잘못된 의존성 관리:** `package-lock.json` 파일이 현재 `package.json`의 의존성 상태를 정확하게 반영하지 못하고 있거나, 캐시된 `node_modules`에 문제가 있을 수 있습니다.
+## 3. 최종 해결 전략: `next.config.mjs`를 통한 환경 변수 주입
 
-## 4. 다음 해결 전략
+위 모든 실패를 통해 얻은 교훈은 **Firebase App Hosting의 빌드 환경과 Next.js의 환경 변수 처리 방식에 대한 정확한 이해가 필수적**이라는 것입니다.
 
-위 분석을 바탕으로, 다음 단계에서는 보다 체계적인 방법으로 문제에 접근합니다.
+- **근본 원인:** Firebase App Hosting은 빌드 시 `FIREBASE_WEBAPP_CONFIG` 환경 변수를 제공하지만, Next.js는 보안 정책상 `NEXT_PUBLIC_` 접두사가 없는 환경 변수를 클라이언트 코드에 노출하지 않습니다.
 
-1.  **의존성 완전 초기화 및 재설치:**
-    - `node_modules` 폴더 및 `package-lock.json` 파일 완전 삭제
-    - `npm cache clean --force` 명령어로 npm 캐시 정리
-    - `npm install`을 실행하여 모든 의존성을 `package.json` 기준으로 새로 설치
-2.  **`build` 스크립트 로컬 테스트:**
-    - `npm run build` 명령을 로컬 환경에서 실행하여, App Hosting 배포 전 빌드 과정 자체에 문제가 없는지 확인합니다. 로컬 빌드 실패 시, 해당 오류 메시지를 집중적으로 분석하여 해결합니다.
-3.  **점진적인 의존성 추가 및 테스트:**
-    - 만약 로컬 빌드도 실패한다면, 최소한의 의존성만 남긴 상태에서 시작하여, 하나씩 패키지를 추가하며 빌드를 테스트하는 방식으로 문제의 원인이 되는 특정 패키지를 찾아냅니다.
+- **최종 해결책:** `next.config.mjs` 파일을 수정하여, 빌드 시점에 App Hosting이 제공하는 `FIREBASE_WEBAPP_CONFIG` 환경 변수의 값을 Next.js가 클라이언트에서 인식할 수 있는 `NEXT_PUBLIC_FIREBASE_WEBAPP_CONFIG` 변수로 복사(주입)해줍니다.
+
+  ```javascript
+  // next.config.mjs
+  /** @type {import('next').NextConfig} */
+  const nextConfig = {
+    reactStrictMode: true,
+    env: {
+      NEXT_PUBLIC_FIREBASE_WEBAPP_CONFIG: process.env.FIREBASE_WEBAPP_CONFIG,
+    },
+  };
+  
+  export default nextConfig;
+  ```
+
+- **클라이언트 측 코드:** 위 설정이 완료되면, 클라이언트 컴포넌트(`lib/firebase/client-provider.tsx`)에서는 `process.env.NEXT_PUBLIC_FIREBASE_WEBAPP_CONFIG`를 안전하게 사용하여 Firebase를 초기화할 수 있습니다.
+
+  ```typescript
+  // lib/firebase/client-provider.tsx
+  const firebaseConfig = JSON.parse(process.env.NEXT_PUBLIC_FIREBASE_WEBAPP_CONFIG!);
+  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  ```
+
+## 4. 향후 배포 시 체크리스트
+
+1.  **환경 변수:** Firebase 관련 클라이언트 측 환경 변수는 반드시 `next.config.mjs`의 `env` 설정을 통해 주입해야 합니다.
+2.  **로컬 빌드:** 배포 전, 항상 `npm run build` 명령으로 로컬에서 프로덕션 빌드가 성공하는지 확인합니다.
+3.  **의존성 관리:** `package.json`과 `package-lock.json`의 일관성을 유지하고, 불필요한 의존성은 제거합니다.
