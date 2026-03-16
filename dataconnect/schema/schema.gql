@@ -1,0 +1,20 @@
+type OrderItem @table(name: "order_items") {
+  id: ID! @auto
+  name: String!
+  quantity: Int!
+  unit: String!
+  order_id: ID!
+}
+
+type Order @table(name: "orders") {
+  id: ID!
+  customer: String!
+  orderDate: String!
+  items: [OrderItem] @foreignKey(columns: "id", references: "order_id")
+  totalPrice: Int!
+  status: String!
+  terminal: String!
+  boxCount: Int!
+  isCombined: Boolean!
+  notes: String
+}

@@ -1,0 +1,4 @@
+connectorId: postgres
+cloudSql:
+  instance: store-automation-dee9e-fdc
+  database: store-automation-dee9e

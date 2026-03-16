@@ -1,0 +1,9 @@
+serviceId: store-automation-dataconnect
+location: asia-east1
+schema:
+  source: schema
+datasource:
+  postgresql:
+    database: store-automation-dee9e
+    cloudSql:
+      instanceId: store-automation-dee9e-fdc

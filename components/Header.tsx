@@ -1,14 +1,17 @@
-import React from 'react';
 import Link from 'next/link';
 import styles from './Header.module.css';
 
 export default function Header() {
   return (
     <header className={styles.header}>
-      <div className={styles.logo}>
-        <Link href="/">통영아재수산</Link>
-      </div>
-      {/* 향후 사용자 정보 및 로그아웃 버튼 등이 여기에 위치합니다. */}
+      <nav className={styles.nav}>
+        <ul className={styles.navList}>
+          <li><Link href="/" className={styles.navLink}>Home</Link></li>
+          <li><Link href="/products" className={styles.navLink}>Products</Link></li>
+          <li><Link href="/support" className={styles.navLink}>Support</Link></li>
+          <li><Link href="/login" className={styles.navLink}>Login</Link></li>
+        </ul>
+      </nav>
     </header>
   );
 }

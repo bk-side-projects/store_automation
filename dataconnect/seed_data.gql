@@ -1,0 +1,11 @@
+mutation {
+  users_insert(
+    data: {
+      firstName: "Charles",
+      lastName: "Babbage"
+    }
+  )
+  {
+    affected_rows
+  }
+}

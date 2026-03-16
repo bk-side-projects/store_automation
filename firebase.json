@@ -1,0 +1,22 @@
+{
+  "apphosting": {
+    "backendId": "ageseafood",
+    "source": ".",
+    "region": "asia-east1",
+    "allow-unauthenticated": true,
+    "alwaysDeployFromSource": true,
+    "ignore": [
+      "firebase.json",
+      ".firebase/**",
+      ".firebaserc",
+      "node_modules",
+      ".next/cache"
+    ]
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "nam5",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}
