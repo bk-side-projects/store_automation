@@ -10,7 +10,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: '#003057', // 네이비 색상으로 변경
+        primary: '#003057',
         secondary: '#7A869A',
       },
       backgroundImage: {
