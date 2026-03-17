@@ -12,6 +12,7 @@
     "node": "20"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
     "@types/recharts": "^1.8.29",
     "class-variance-authority": "^0.7.1",
     "firebase": "^12.10.0",

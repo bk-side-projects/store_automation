@@ -1,36 +1,53 @@
-# Project Blueprint: Admin Dashboard UI/UX Overhaul
 
-## Overview
+# 프로젝트 청사진: Figma 기반 관리자 대시보드
 
-The purpose of this project is to transform a basic Next.js application into a modern, visually appealing, and intuitive admin dashboard. This overhaul will be guided by a professional design from a Figma file to dramatically improve the user experience (UX) and user interface (UI) and make it a production-ready application.
+## 개요
 
-## Implemented Design, Style, and Features
+이 문서는 Figma 디자인을 기반으로 Next.js와 Firebase를 사용하여 구축하는 관리자 대시보드 애플리케이션의 개발 계획과 명세를 정의합니다. 애플리케이션은 사용자 인증, 데이터 시각화, 주문 관리 등의 기능을 제공하며, 현대적이고 직관적인 UI/UX를 목표로 합니다.
 
-*   **Framework:** Next.js (App Router)
-*   **Styling:** Tailwind CSS with a full design system integration from Figma.
-*   **Authentication:** A visually redesigned login flow.
-*   **Layout:** A responsive, modern dashboard layout with a sidebar and header.
-*   **Tooling:** Firebase MCP and Figma MCP integration.
+## 1차 구현 (완료)
 
-## Current Plan: Full Figma Implementation for Production
+- **Next.js 프로젝트 초기 설정**: App Router 기반의 프로젝트 구조 설정.
+- **Firebase 연동**: Firebase SDK 초기화 및 인증 설정.
+- **기본 인증**: 이메일/비밀번호를 사용한 로그인, 회원가입, 로그아웃 기능의 기본 로직 구현.
+- **기본 레이아웃**: `AppLayout`을 사용한 기본적인 대시보드 레이아웃 구현.
+- **데이터 시각화**: `recharts`를 사용한 판매 데이터 차트, 통계 카드, 최근 주문 테이블 등 기본 컴포넌트 구현.
+- **데이터 관리**: 목업 데이터를 활용하여 대시보드에 필요한 데이터 구조(`Order`, `OrderItem`) 정의 및 연동.
+- **배포 설정**: Firebase App Hosting을 통한 자동 빌드 및 배포 설정 (`next.config.mjs`, `deployment_guide.md` 작성).
 
-**Objective:** Implement the "Admin Dashboard Design" from the provided Figma file, including all necessary UI components, backend logic (mocked), and data models to create a fully functional application.
+---
 
-**Architectural Approach:**
+## 2차 구현 (완료): Figma UI 적용 및 기능 개선
 
-*   **Component-Driven:** Build reusable components for dashboard elements (charts, tables, cards).
-*   **Server-Side Rendering (SSR):** Fetch data on the server where possible to improve performance and SEO.
-*   **Mock Data Layer:** Create a mock data service (`lib/data.ts`) to simulate a real backend API, allowing the frontend to be developed and tested independently.
+### 목표
 
-**Detailed Steps:**
+기본 UI를 Figma 디자인에 맞춰 전면적으로 개편하고, 사용자 경험을 향상시키기 위한 기능 개선을 성공적으로 완료했습니다.
 
-1.  **Data Modeling (`types/index.ts`):** Define and expand data structures for `Order`, `Product`, `Customer`, and `User` to support all features shown in the Figma design.
-2.  **Mock Data Service (`lib/data.ts`):** Create realistic mock data and functions to fetch it (e.g., `getRecentOrders`, `getSummaryMetrics`).
-3.  **Dashboard Page (`app/page.tsx`):** Build the main dashboard view by composing server components that fetch and display data.
-    *   **Stat Cards:** Develop a `StatCard` component to display key metrics.
-    *   **Sales Chart:** Implement a `SalesChart` component (using a library like `recharts`).
-    *   **Recent Orders:** Create a `RecentOrdersTable` component.
-4.  **Component Implementation (`components/dashboard/*`):** Create, style, and test all necessary dashboard components.
-5.  **Install Dependencies:** Add any new libraries required, such as `recharts` for charting.
-6.  **Code Validation:** Run `npm run lint -- --fix` to ensure code quality.
-7.  **Final Review:** Verify that the application is fully functional, visually polished, and ready for a production environment.
+### 1. 로그아웃 기능 활성화 (완료)
+
+- **결과**: 사용자가 'Logout' 버튼을 클릭하면, 안전하게 로그아웃 처리된 후 로그인 페이지로 즉시 이동하도록 기능이 개선되었습니다.
+- **구현 내용**:
+    - `components/Providers.tsx`의 `logout` 함수에 Firebase의 `signOut` 호출 후, Next.js의 `useRouter`를 사용하여 `/login` 경로로 리디렉션하는 로직을 추가했습니다.
+    - `components/AppLayout.tsx`의 로그아웃 버튼과 드롭다운 메뉴에 새로운 로그아웃 기능을 연결하여 일관된 사용자 경험을 제공합니다.
+
+### 2. 로그인 페이지 UI 전면 개편 (완료)
+
+- **결과**: Figma 디자인에 명시된 레이아웃, 색상, 타이포그래피, 컴포넌트 스타일을 `app/login/page.tsx`에 완벽하게 적용하여, 시각적으로 매력적이고 현대적인 로그인 페이지를 구현했습니다.
+- **구현 내용**:
+    - `app/login/page.tsx`의 JSX 구조를 Figma 레이아웃에 맞춰 전면 재구성했습니다.
+    - Tailwind CSS를 사용하여 Figma의 디자인 시스템(색상, 폰트, 간격, 그림자 등)을 정교하게 구현했습니다.
+    - 아이디, 비밀번호 `input` 필드와 로그인 `button`을 포함한 모든 UI 요소를 Figma 디자인에 따라 스타일링하고, 상호작용(포커스, 호버) 효과를 추가했습니다.
+
+### 3. 관리자 대시보드 UI 전면 개편 (완료)
+
+- **결과**: 로그인 후 접근하는 모든 관리자 페이지(메인 레이아웃, 대시보드)를 Figma 디자인에 따라 시각적으로 통일되고 기능적으로 향상된 인터페이스로 성공적으로 재구축했습니다.
+- **구현 내용**:
+    - **`AppLayout.tsx`**:
+        - **사이드바**: Figma 디자인에 따라 아이콘, 네비게이션 링크, 활성 상태 표시, 로고 등을 세련되게 변경했습니다.
+        - **헤더**: 사용자 프로필 드롭다운, 검색창, 알림 아이콘 등 헤더의 모든 요소를 Figma 시안에 맞춰 전면적으로 수정했습니다.
+    - **`app/page.tsx`**:
+        - 대시보드 페이지의 전체적인 그리드와 레이아웃을 Figma 시안에 맞춰 재조정하여, 콘텐츠의 가독성과 시각적 균형을 개선했습니다.
+    - **핵심 컴포넌트 리디자인**:
+        - **`StatCard.tsx`**: 아이콘, 배경, 텍스트 스타일, 호버 애니메이션 등 Figma 디자인을 완벽하게 적용하여 동적이고 매력적인 통계 카드를 구현했습니다.
+        - **`SalesChart.tsx`**: `recharts` 기반 차트의 색상 팔레트, 그리드, 툴팁, 범례 등을 Figma 디자인에 맞춰 커스터마이징하여 데이터 시각화의 품질을 높였습니다.
+        - **`RecentOrdersTable.tsx`**: 테이블의 행/열 스타일, 헤더, 상태 배지, 반응형 레이아웃 등을 개선하여 가독성과 사용성을 극대화했습니다.

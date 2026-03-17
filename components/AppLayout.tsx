@@ -1,82 +1,145 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Fragment, useContext } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Package, Users, Bell, Search, Menu, X, ChevronDown } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { 
+    Home, 
+    Package, 
+    Users, 
+    Bell, 
+    Search, 
+    Menu, 
+    X, 
+    ChevronDown, 
+    LogOut, 
+    Briefcase 
+} from 'lucide-react';
+import { AuthContext } from '@/components/Providers';
+import { Transition, Menu as HeadlessMenu } from '@headlessui/react';
 
 const navItems = [
-  { href: '/', icon: Home, label: 'Dashboard' },
-  { href: '/products', icon: Package, label: 'Products' },
-  { href: '/customers', icon: Users, label: 'Customers' },
+  { href: '/', icon: Home, label: '대시보드' },
+  { href: '/products', icon: Package, label: '상품 관리' },
+  { href: '/customers', icon: Users, label: '고객 관리' },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout } = useAuth();
+  const authContext = useContext(AuthContext);
   const pathname = usePathname();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
+  // Make sure to handle the case where context is undefined
+  const { userProfile, logout } = authContext || { userProfile: null, logout: async () => {} };
+
   const Sidebar = () => (
-    <aside className={`bg-gray-800 text-white w-64 min-h-screen p-4 flex flex-col fixed md:relative z-20 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out`}>
-      <div className="flex items-center justify-between mb-10">
-        <h1 className="text-2xl font-bold">Admin</h1>
-        <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-400 hover:text-white">
-          <X size={24} />
-        </button>
-      </div>
-      <nav className="flex-grow">
-        <ul>
-          {navItems.map((item) => (
-            <li key={item.label} className="mb-2">
-              <Link href={item.href} legacyBehavior>
-                <a className={`flex items-center p-3 rounded-lg transition-colors ${pathname === item.href ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>
-                  <item.icon size={20} className="mr-4" />
-                  <span>{item.label}</span>
-                </a>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      <div className="mt-auto">
-         {/* User profile section can be added here */}
-      </div>
-    </aside>
+    <>
+      {/* Overlay for mobile */}
+      <div 
+        className={`fixed inset-0 bg-black/60 z-20 md:hidden ${isSidebarOpen ? 'block' : 'hidden'}`}
+        onClick={() => setSidebarOpen(false)}
+      ></div>
+      
+      <aside className={`bg-slate-800 text-slate-200 w-64 min-h-screen p-4 flex flex-col fixed md:relative z-30 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out`}>
+        <div className="flex items-center gap-3 mb-10 px-3">
+            <div className="p-2 bg-sky-500/10 rounded-full border border-sky-400/20">
+                <Briefcase className="w-7 h-7 text-sky-400" />
+            </div>
+            <h1 className="text-2xl font-bold text-white tracking-wider">통영아재수산</h1>
+        </div>
+
+        <nav className="flex-grow">
+          <ul>
+            {navItems.map((item) => (
+              <li key={item.label} className="mb-2">
+                <Link href={item.href} legacyBehavior>
+                  <a className={`flex items-center p-3 rounded-lg transition-all duration-200 text-lg font-semibold ${pathname === item.href ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'hover:bg-slate-700'}`}>
+                    <item.icon size={22} className="mr-4" />
+                    <span>{item.label}</span>
+                  </a>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="mt-auto">
+          <button onClick={logout} className="w-full flex items-center p-3 rounded-lg transition-colors hover:bg-red-500/80 hover:text-white text-red-400 font-bold text-lg">
+            <LogOut size={22} className="mr-4" />
+            <span>로그아웃</span>
+          </button>
+        </div>
+      </aside>
+    </>
   );
 
   const Header = () => (
-    <header className="bg-white shadow-md p-4 flex items-center justify-between sticky top-0 z-10">
-        <button onClick={() => setSidebarOpen(true)} className="md:hidden text-gray-600">
-          <Menu size={24} />
-        </button>
-        <div className="relative hidden md:block">
-          <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input type="text" placeholder="Search..." className="bg-gray-100 rounded-full pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
+    <header className="bg-white/80 backdrop-blur-sm shadow-sm p-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <button className="text-gray-600 hover:text-gray-800 relative">
+            <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="md:hidden text-slate-600">
+              <Menu size={24} />
+            </button>
+            <div className="relative hidden md:block">
+              <Search size={20} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input type="text" placeholder="검색..." className="bg-slate-100 rounded-full pl-11 pr-4 py-2.5 w-64 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+            </div>
+        </div>
+        <div className="flex items-center gap-5">
+          <button className="text-slate-600 hover:text-slate-800 relative">
             <Bell size={24} />
-            <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+            <span className="absolute top-0 right-0 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white"></span>
           </button>
-          <div className="flex items-center gap-2 cursor-pointer">
-            <div className="w-8 h-8 rounded-full bg-gray-300"></div>
-            {user && (
-              <span className="hidden sm:inline font-semibold text-gray-700">{user.displayName || 'Admin User'}</span>
-            )}
-            <ChevronDown size={16} className="text-gray-500" />
-          </div>
-           <button onClick={logout} className="ml-4 text-sm text-gray-500 hover:text-gray-700">Logout</button>
+          
+          <HeadlessMenu as="div" className="relative">
+            <HeadlessMenu.Button className="flex items-center gap-2 cursor-pointer">
+                <div className="w-10 h-10 rounded-full bg-slate-200 border-2 border-slate-300 overflow-hidden">
+                    {/* Placeholder for user avatar - replace with Image component if available */}
+                </div>
+                <div className="hidden sm:flex flex-col items-start">
+                    <span className="font-bold text-slate-800 text-sm">{userProfile?.userId || 'Admin'}</span>
+                    <span className="text-xs text-slate-500">Administrator</span>
+                </div>
+                <ChevronDown size={18} className="text-slate-500 hidden sm:block" />
+            </HeadlessMenu.Button>
+            <Transition
+              as={Fragment}
+              enter="transition ease-out duration-100"
+              enterFrom="transform opacity-0 scale-95"
+              enterTo="transform opacity-100 scale-100"
+              leave="transition ease-in duration-75"
+              leaveFrom="transform opacity-100 scale-100"
+              leaveTo="transform opacity-0 scale-95"
+            >
+              <HeadlessMenu.Items className="absolute right-0 mt-2 w-48 origin-top-right bg-white divide-y divide-slate-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div className="px-1 py-1 ">
+                  <HeadlessMenu.Item>
+                    {({ active }) => (
+                      <button className={`${active ? 'bg-sky-500 text-white' : 'text-slate-900'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}>
+                        프로필
+                      </button>
+                    )}
+                  </HeadlessMenu.Item>
+                  <HeadlessMenu.Item>
+                    {({ active }) => (
+                      <button onClick={logout} className={`${active ? 'bg-red-500 text-white' : 'text-red-600'} group flex rounded-md items-center w-full px-2 py-2 text-sm font-semibold`}>
+                        로그아웃
+                      </button>
+                    )}
+                  </HeadlessMenu.Item>
+                </div>
+              </HeadlessMenu.Items>
+            </Transition>
+          </HeadlessMenu>
         </div>
     </header>
   );
 
   return (
-    <div className="flex bg-gray-100">
+    <div className="flex bg-slate-100 min-h-screen">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
-        <main className="p-8">
+        <main className="p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>

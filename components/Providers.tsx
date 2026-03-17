@@ -4,6 +4,7 @@ import { createContext, useState, useEffect, ReactNode, useContext } from 'react
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, User } from 'firebase/auth';
 import { getFirestore, doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -41,6 +42,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -87,6 +89,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     setLoading(true);
     try {
       await signOut(auth);
+      router.push('/login');
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {

@@ -6,25 +6,65 @@ interface SalesChartProps {
   data: { name: string; sales: number }[];
 }
 
+// Custom Tooltip Component
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-slate-800/80 backdrop-blur-sm text-white p-4 rounded-xl shadow-lg border border-slate-700">
+        <p className="font-bold text-lg">{`${label}월`}</p>
+        <p className="text-sky-400 text-base">{`매출: ₩${payload[0].value.toLocaleString()}`}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function SalesChart({ data }: SalesChartProps) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm h-80">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Sales Analytics</h3>
-        <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                <XAxis dataKey="name" tick={{ fill: '#6B7280' }} />
-                <YAxis tick={{ fill: '#6B7280' }} />
-                <Tooltip 
-                    contentStyle={{ 
-                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                        backdropFilter: 'blur(5px)',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '12px',
-                    }}
+    <div className="bg-white p-6 rounded-2xl shadow-md h-full min-h-[400px]">
+        <h3 className="text-2xl font-bold text-slate-800 mb-6">월별 매출 분석</h3>
+        <ResponsiveContainer width="100%" height="90%">
+            <LineChart 
+              data={data} 
+              margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
+            >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fill: '#64748b' }} 
+                  axisLine={{ stroke: '#cbd5e1' }} 
+                  tickLine={false}
+                  dy={10}
+                  tickFormatter={(value) => `${value}월`}
                 />
-                <Legend wrapperStyle={{ color: '#4B5563' }} />
-                <Line type="monotone" dataKey="sales" stroke="#3B82F6" strokeWidth={3} dot={{ r: 5 }} activeDot={{ r: 8 }} />
+                <YAxis 
+                  tick={{ fill: '#64748b' }} 
+                  axisLine={false} 
+                  tickLine={false}
+                  tickFormatter={(value) => `₩${Number(value) / 1000000}M`}
+                />
+                <Tooltip 
+                  cursor={{ stroke: '#0ea5e9', strokeWidth: 2, strokeDasharray: '5 5' }}
+                  content={<CustomTooltip />}
+                />
+                <Legend 
+                    wrapperStyle={{ paddingTop: '20px' }} 
+                    formatter={(value) => <span className="text-slate-600 font-semibold">{value}</span>}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="sales" 
+                  name="월 매출"
+                  stroke="#0ea5e9" 
+                  strokeWidth={4} 
+                  dot={false}
+                  activeDot={{ 
+                    r: 8, 
+                    stroke: '#fff', 
+                    strokeWidth: 2, 
+                    fill: '#0ea5e9'
+                  }}
+                />
             </LineChart>
         </ResponsiveContainer>
     </div>
