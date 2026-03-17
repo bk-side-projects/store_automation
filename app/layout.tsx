@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className={`${inter.className} bg-white text-secondary`}>
+      <body className={`${inter.className} bg-background text-text`}>
         {/* 
           Providers is a Client Component that wraps all client-side logic.
           AppLayout contains the UI shell.

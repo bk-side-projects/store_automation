@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -24,19 +25,24 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-primary text-primary-foreground py-4 px-6 flex items-center justify-between">
+    <header className="bg-gradient-to-r from-primary to-secondary text-white py-4 px-6 flex items-center justify-between shadow-lg">
       <div className="flex items-center gap-4">
         <Link href="/" className="text-xl font-bold">
           AgeSeafood WMS
         </Link>
+        {user && (
+          <nav className="flex items-center gap-4">
+            <Link href="/products" className="hover:underline">Products</Link>
+          </nav>
+        )}
       </div>
       <div className="flex items-center gap-4">
         {user && userProfile ? (
           <>
-            <span className="text-secondary mr-4">{`환영합니다, ${userProfile.userId}님`}</span>
+            <span className="text-text-dark mr-4">{`환영합니다, ${userProfile.userId}님`}</span>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 text-sm font-medium text-white bg-secondary rounded-md hover:bg-opacity-90"
+              className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-md hover:bg-opacity-90"
             >
               Logout
             </button>
@@ -44,7 +50,7 @@ export default function Header() {
         ) : (
           <Link
             href="/login"
-            className="px-4 py-2 text-sm font-medium text-white bg-secondary rounded-md hover:bg-opacity-90"
+            className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-md hover:bg-opacity-90"
           >
             Login
           </Link>
