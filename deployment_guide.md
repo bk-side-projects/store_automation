@@ -56,19 +56,20 @@ export default nextConfig;
 
 ```
 
-**2. 코드 설명**
+### **성공적인 배포 절차**
 
-*   이 설정은 먼저 `FIREBASE_WEBAPP_CONFIG` 환경 변수가 존재하는지 확인합니다. (App Hosting 환경)
-*   만약 존재한다면, JSON 형식의 이 변수를 파싱하여 `firebaseWebAppConfig` 객체에 저장합니다.
-*   `nextConfig.env` 객체를 통해, 애플리케이션에서 사용하는 `NEXT_PUBLIC_FIREBASE_*` 환경 변수들을 설정합니다.
-*   이때, `firebaseWebAppConfig` 객체에 값이 있으면 그 값을 사용하고, 없으면(로컬 환경) 기존의 `process.env.NEXT_PUBLIC_*` 값을 사용하도록 하여, 로컬과 배포 환경 모두에서 호환되도록 합니다.
+**1. 올바른 배포 방법: Git Push를 통한 자동 배포**
 
-**3. 배포**
+- **핵심:** 이 프로젝트는 **Firebase App Hosting**과 연동되어 있으므로, 배포는 **Git**을 통해 자동으로 이루어집니다.
+- **절차:**
+    1. 모든 코드 변경 사항을 저장합니다.
+    2. `git add .` 명령으로 변경된 파일들을 스테이징합니다.
+    3. `git commit -m "설명"` 명령으로 커밋합니다.
+    4. `git push origin main` 명령으로 `main` 브랜치에 푸시합니다.
+- **결과:** 코드가 `main` 브랜치에 푸시되면, Firebase App Hosting이 이를 감지하여 **자동으로 빌드 및 배포를 시작**합니다.
 
-`next.config.mjs` 파일을 프로젝트에 추가한 후, 변경 사항을 Git에 커밋하고 `main` 브랜치에 푸시하면 Firebase App Hosting이 자동으로 새로운 빌드를 시작합니다. 이 설정 덕분에 빌드 서버는 Firebase 환경 변수를 올바르게 인식하게 되고, `auth/invalid-api-key` 오류 없이 성공적으로 빌드를 완료할 수 있습니다.
+**2. 잘못된 배포 방법: `classic_firebase_hosting_deploy` 사용 금지**
 
-### **향후 배포 시 체크리스트**
-
-1.  **`next.config.mjs` 확인**: 새로운 Next.js 프로젝트를 App Hosting에 배포하기 전, 항상 `next.config.mjs` 파일이 위와 같이 올바르게 설정되어 있는지 확인합니다.
-2.  **로컬 빌드**: 배포 전, `npm run build` 명령을 실행하여 로컬에서 빌드가 성공하는지 반드시 확인합니다.
-3.  **의존성**: `package.json`에 모든 필수 의존성이 포함되어 있는지 확인합니다.
+- **경고:** `classic_firebase_hosting_deploy` 도구는 **정적(static) 사이트**를 위한 것입니다.
+- **이유:** 우리 프로젝트는 **서버사이드 렌더링(SSR)**을 사용하는 **Next.js 서버 애플리케이션**이므로, 이 도구와 호환되지 않습니다. 이 도구를 사용하면 배포에 실패합니다.
+- **결론:** **절대로 `classic_firebase_hosting_deploy`를 사용하지 마십시오.**
