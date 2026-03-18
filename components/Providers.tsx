@@ -2,10 +2,11 @@
 
 import { createContext, useState, useEffect, ReactNode, useContext } from 'react';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, User } from 'firebase/auth';
-import { getFirestore, doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, User } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
+// --- Firebase Initialization ---
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -15,12 +16,13 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
 export const app: FirebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Types
+// --- Types and Context ---
+type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
 interface UserProfile {
   userId: string;
   email: string;
@@ -29,19 +31,19 @@ interface UserProfile {
 interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
-  loading: boolean;
+  authStatus: AuthStatus;
   login: (id: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  signup: (id: string, email: string, password: string) => Promise<void>;
 }
 
-// Context
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Provider Component
+// --- Provider Component ---
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
   const router = useRouter();
 
   useEffect(() => {
@@ -52,56 +54,64 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
           setUserProfile(userDocSnap.data() as UserProfile);
+          setAuthStatus('authenticated');
         } else {
+          // This case might happen if user is created in Auth but not in Firestore yet.
+          // Or if there is an error during signup.
           setUserProfile(null);
+          setAuthStatus('unauthenticated');
         }
       } else {
         setUserProfile(null);
+        setAuthStatus('unauthenticated');
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
   const login = async (id: string, password: string) => {
-    setLoading(true);
-    try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('userId', '==', id), limit(1));
-      const querySnapshot = await getDocs(q);
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('userId', '==', id), limit(1));
+    const querySnapshot = await getDocs(q);
 
-      if (querySnapshot.empty) {
-        throw new Error('존재하지 않는 아이디입니다.');
-      }
-
-      const userDoc = querySnapshot.docs[0];
-      const email = userDoc.data().email;
-
-      if (!email) {
-        throw new Error('사용자 이메일을 찾을 수 없습니다.');
-      }
-
-      await signInWithEmailAndPassword(auth, email, password);
-      // Successful login will be handled by onAuthStateChanged
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
-    } finally {
-      setLoading(false);
+    if (querySnapshot.empty) {
+      throw new Error('존재하지 않는 아이디입니다.');
     }
+    const userDoc = querySnapshot.docs[0];
+    const email = userDoc.data().email;
+    if (!email) {
+      throw new Error('사용자 이메일을 찾을 수 없습니다.');
+    }
+    await signInWithEmailAndPassword(auth, email, password);
+    // onAuthStateChanged will handle the rest.
   };
 
   const logout = async () => {
-    try {
-      await signOut(auth);
-      // Clearing state and redirecting will be handled by onAuthStateChanged
-      router.push('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
+    await signOut(auth);
+    // onAuthStateChanged will set status to 'unauthenticated'
+    // and AppLayout will redirect to /login.
   };
 
-  const value = { user, userProfile, loading, login, logout };
+  const signup = async (id: string, email: string, password: string) => {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('userId', '==', id), limit(1));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      throw new Error('이미 존재하는 아이디입니다.');
+    }
+
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const newUser = userCredential.user;
+
+    await setDoc(doc(db, 'users', newUser.uid), {
+      userId: id,
+      email: email,
+    });
+    // onAuthStateChanged will handle the rest.
+  };
+
+  const value = { user, userProfile, authStatus, login, logout, signup };
 
   return (
     <AuthContext.Provider value={value}>
@@ -110,7 +120,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Custom Hook
+// --- Custom Hook ---
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

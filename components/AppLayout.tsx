@@ -17,68 +17,89 @@ import {
 import { useAuth } from '@/components/Providers';
 import { Transition, Menu as HeadlessMenu } from '@headlessui/react';
 
+// --- Navigation Items ---
 const navItems = [
   { href: '/dashboard', icon: Home, label: '대시보드' },
   { href: '/products', icon: Package, label: '상품 관리' },
   { href: '/users', icon: Users, label: '고객 관리' },
 ];
 
+// --- Global Loader Component ---
 const GlobalLoader = () => (
   <div className="flex items-center justify-center min-h-screen bg-slate-100">
     <div className="text-xl font-semibold text-slate-700">Loading...</div>
   </div>
 );
 
+// --- Main App Layout Component ---
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { userProfile, loading } = useAuth();
+  const { userProfile, authStatus, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
-  // --- Redirect Logic ---
+  // --- Redirection Logic based on authStatus ---
   useEffect(() => {
-    if (loading) return; // Wait for auth state to be resolved
+    // Don't do anything while auth state is resolving
+    if (authStatus === 'loading') return;
 
     const isAuthPage = pathname === '/login' || pathname === '/signup';
 
-    // If user is not logged in and not on an auth page, redirect to login
-    if (!userProfile && !isAuthPage) {
+    // If user is not authenticated, and they are on a protected page, redirect to login.
+    if (authStatus === 'unauthenticated' && !isAuthPage) {
       router.push('/login');
     }
-
-    // If user is logged in and on an auth page, redirect to dashboard
-    if (userProfile && isAuthPage) {
+    
+    // If user is authenticated, and they are on an auth page, redirect to dashboard.
+    if (authStatus === 'authenticated' && isAuthPage) {
       router.push('/dashboard');
     }
-  }, [userProfile, loading, router, pathname]);
+  }, [authStatus, router, pathname]);
 
   // --- Render Logic ---
-  const isAuthPage = pathname === '/login' || pathname === '/signup';
-
-  // Define states where a loader should be shown to prevent content flashing
-  const isTransitioning = 
-    loading || // 1. Still loading auth state
-    (!isAuthPage && !userProfile) || // 2. On a protected page, but no user (will be redirected)
-    (isAuthPage && userProfile); // 3. On an auth page, but has user (will be redirected)
-
-  if (isTransitioning) {
+  // Always show loader if auth state is still loading.
+  if (authStatus === 'loading') {
     return <GlobalLoader />;
   }
 
-  // If on an auth page (and not logged in), render children directly
-  if (isAuthPage) {
+  const isAuthPage = pathname === '/login' || pathname === '/signup';
+
+  // If user is authenticated, show the main layout, unless they are on an auth page (redirecting).
+  if (authStatus === 'authenticated') {
+    if (isAuthPage) {
+      // While redirecting from /login to /dashboard, show a loader.
+      return <GlobalLoader />;
+    } 
+    // This is the main view for authenticated users on protected pages.
+    return <ProtectedLayout>{children}</ProtectedLayout>;
+  }
+
+  // If user is unauthenticated, show the auth page, unless they are on a protected page (redirecting).
+  if (authStatus === 'unauthenticated') {
+    if (!isAuthPage) {
+      // While redirecting from a protected page to /login, show a loader.
+      return <GlobalLoader />;
+    }
+    // This is the main view for unauthenticated users on auth pages.
     return <>{children}</>;
   }
 
-  // --- Main App Layout (for authenticated users on protected pages) ---
+  // Fallback, should ideally not be reached.
+  return <GlobalLoader />;
+}
 
+// --- Extracted Layout for Authenticated Users ---
+const ProtectedLayout = ({ children }: { children: React.ReactNode }) => {
+  const { userProfile, logout } = useAuth();
+  const pathname = usePathname();
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  
   const Sidebar = () => (
     <>
       <div 
         className={`fixed inset-0 bg-black/60 z-20 md:hidden ${isSidebarOpen ? 'block' : 'hidden'}`}
         onClick={() => setSidebarOpen(false)}
       ></div>
-      
       <aside className={`bg-slate-800 text-slate-200 w-64 min-h-screen p-4 flex flex-col fixed md:relative z-30 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out`}>
         <div className="flex items-center gap-3 mb-10 px-3">
             <div className="p-2 bg-sky-500/10 rounded-full border border-sky-400/20">
@@ -86,13 +107,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
             <h1 className="text-2xl font-bold text-white tracking-wider">통영아재수산</h1>
         </div>
-
         <nav className="flex-grow">
           <ul>
             {navItems.map((item) => (
               <li key={item.label} className="mb-2">
                 <Link href={item.href} legacyBehavior>
-                  <a className={`flex items-center p-3 rounded-lg transition-all duration-200 text-lg font-semibold ${pathname === item.href ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'hover:bg-slate-700'}`}>
+                  <a className={`flex items-center p-3 rounded-lg transition-all duration-200 text-lg font-semibold ${pathname.startsWith(item.href) ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'hover:bg-slate-700'}`}>
                     <item.icon size={22} className="mr-4" />
                     <span>{item.label}</span>
                   </a>
@@ -101,9 +121,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             ))}
           </ul>
         </nav>
-
         <div className="mt-auto">
-          <button onClick={() => router.push('/logout')} className="w-full flex items-center p-3 rounded-lg transition-colors hover:bg-red-500/80 hover:text-white text-red-400 font-bold text-lg">
+          <button onClick={logout} className="w-full flex items-center p-3 rounded-lg transition-colors hover:bg-red-500/80 hover:text-white text-red-400 font-bold text-lg">
             <LogOut size={22} className="mr-4" />
             <span>로그아웃</span>
           </button>
@@ -115,7 +134,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const Header = () => (
     <header className="bg-white/80 backdrop-blur-sm shadow-sm p-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
-            <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="md:hidden text-slate-600">
+            <button onClick={() => setSidebarOpen(true)} className="md:hidden text-slate-600">
               <Menu size={24} />
             </button>
             <div className="relative hidden md:block">
@@ -139,15 +158,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
                 <ChevronDown size={18} className="text-slate-500 hidden sm:block" />
             </HeadlessMenu.Button>
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
+            <Transition as={Fragment}>
               <HeadlessMenu.Items className="absolute right-0 mt-2 w-48 origin-top-right bg-white divide-y divide-slate-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                 <div className="px-1 py-1 ">
                   <HeadlessMenu.Item>
@@ -159,7 +170,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </HeadlessMenu.Item>
                   <HeadlessMenu.Item>
                     {({ active }) => (
-                      <button onClick={() => router.push('/logout')} className={`${active ? 'bg-red-500 text-white' : 'text-red-600'} group flex rounded-md items-center w-full px-2 py-2 text-sm font-semibold`}>
+                      <button onClick={logout} className={`${active ? 'bg-red-500 text-white' : 'text-red-600'} group flex rounded-md items-center w-full px-2 py-2 text-sm font-semibold`}>
                         로그아웃
                       </button>
                     )}
@@ -183,4 +194,4 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   );
-}
+};
