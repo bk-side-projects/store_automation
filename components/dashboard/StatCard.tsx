@@ -1,35 +1,28 @@
 import { LucideIcon } from 'lucide-react';
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 interface StatCardProps {
   title: string;
   value: string;
   icon: LucideIcon;
   change: string;
-  changeType: 'increase' | 'decrease';
-  description: string;
+  bgColor: string;
+  iconColor: string;
 }
 
-export default function StatCard({ title, value, icon: Icon, change, changeType, description }: StatCardProps) {
-  const isIncrease = changeType === 'increase';
-
+export default function StatCard({ title, value, icon: Icon, change, bgColor, iconColor }: StatCardProps) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-300 ease-in-out transform hover:-translate-y-1">
-      <div className="flex items-start justify-between">
-        <div className="flex flex-col space-y-2">
-          <p className="text-base font-semibold text-slate-500">{title}</p>
-          <p className="text-4xl font-bold text-slate-800">{value}</p>
-        </div>
-        <div className={`p-3 rounded-full ${isIncrease ? 'bg-green-100' : 'bg-red-100'}`}>
-          <Icon className={`h-7 w-7 ${isIncrease ? 'text-green-600' : 'text-red-600'}`} />
-        </div>
+    <div className={`relative p-6 rounded-2xl overflow-hidden ${bgColor}`}>
+      <div className="absolute -right-4 -bottom-4 w-24 h-24 opacity-20">
+        <Icon className="w-full h-full text-white" />
       </div>
-      <div className="mt-4 flex items-center gap-2 text-sm">
-        <div className={`flex items-center gap-1 font-semibold ${isIncrease ? 'text-green-600' : 'text-red-600'}`}>
-          {isIncrease ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-          <span>{change}</span>
+      <div className="relative">
+        <p className="text-sm font-medium text-white/80">{title}</p>
+        <p className="text-3xl font-bold text-white mt-1">{value}</p>
+        <div className="flex items-center text-sm mt-3">
+          <span className={`py-1 px-2.5 rounded-full text-xs font-semibold bg-white/20 text-white`}>
+            {change}
+          </span>
         </div>
-        <span className="text-slate-500">{description}</span>
       </div>
     </div>
   );

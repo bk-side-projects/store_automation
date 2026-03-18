@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, Fragment, useContext } from 'react';
-import { usePathname } from 'next/navigation';
+import { useState, Fragment, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
     Home, 
@@ -10,31 +10,45 @@ import {
     Bell, 
     Search, 
     Menu, 
-    X, 
     ChevronDown, 
     LogOut, 
     Briefcase 
 } from 'lucide-react';
-import { AuthContext } from '@/components/Providers';
+import { useAuth } from '@/components/Providers';
 import { Transition, Menu as HeadlessMenu } from '@headlessui/react';
 
 const navItems = [
-  { href: '/', icon: Home, label: '대시보드' },
+  { href: '/dashboard', icon: Home, label: '대시보드' },
   { href: '/products', icon: Package, label: '상품 관리' },
-  { href: '/customers', icon: Users, label: '고객 관리' },
+  { href: '/users', icon: Users, label: '고객 관리' },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const authContext = useContext(AuthContext);
+  const { userProfile, loading, logout } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
-  // Make sure to handle the case where context is undefined
-  const { userProfile, logout } = authContext || { userProfile: null, logout: async () => {} };
+  useEffect(() => {
+    if (!loading && !userProfile) {
+      router.push('/login');
+    }
+  }, [userProfile, loading, router]);
+
+  if (loading || !userProfile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-100">
+        <div className="text-xl font-semibold text-slate-700">Loading...</div>
+      </div>
+    );
+  }
+  
+  if (pathname === '/login' || pathname === '/signup') {
+    return <>{children}</>;
+  }
 
   const Sidebar = () => (
     <>
-      {/* Overlay for mobile */}
       <div 
         className={`fixed inset-0 bg-black/60 z-20 md:hidden ${isSidebarOpen ? 'block' : 'hidden'}`}
         onClick={() => setSidebarOpen(false)}
@@ -93,7 +107,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <HeadlessMenu as="div" className="relative">
             <HeadlessMenu.Button className="flex items-center gap-2 cursor-pointer">
                 <div className="w-10 h-10 rounded-full bg-slate-200 border-2 border-slate-300 overflow-hidden">
-                    {/* Placeholder for user avatar - replace with Image component if available */}
                 </div>
                 <div className="hidden sm:flex flex-col items-start">
                     <span className="font-bold text-slate-800 text-sm">{userProfile?.userId || 'Admin'}</span>

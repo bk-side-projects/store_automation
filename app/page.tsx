@@ -2,7 +2,7 @@ import StatCard from '@/components/dashboard/StatCard';
 import SalesChart from '@/components/dashboard/SalesChart';
 import RecentOrdersTable from '@/components/dashboard/RecentOrdersTable';
 import { getSummaryMetrics, getRecentOrders, getSalesData } from '@/lib/data';
-import { DollarSign, ShoppingCart, Users, TrendingUp } from 'lucide-react';
+import { DollarSign, ShoppingCart, Users } from 'lucide-react';
 
 export default async function DashboardPage() {
   // Fetch data in parallel
@@ -13,37 +13,36 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-8 bg-gray-50 min-h-screen">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900">대시보드</h1>
-        {/* You can add a date range picker or other controls here */}
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">종합 대시보드</h1>
       </div>
 
       {/* Stat Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <StatCard 
           title="총 매출"
-          value={`₩${(summary.totalRevenue / 1000000).toFixed(1)}M`} 
-          icon={DollarSign} 
+          value={`₩${(summary.totalRevenue / 1000000).toFixed(1)}M`}
+          icon={DollarSign}
           change="+12.5%"
-          changeType="increase"
-          description="지난 달 대비"
+          bgColor="bg-gradient-to-br from-blue-500 to-blue-700"
+          iconColor="text-blue-200"
         />
         <StatCard 
           title="총 주문 수"
           value={summary.totalOrders.toLocaleString()}
           icon={ShoppingCart} 
           change="+8.2%" 
-          changeType="increase" 
-          description="지난 달 대비"
+          bgColor="bg-gradient-to-br from-orange-400 to-orange-600"
+          iconColor="text-orange-100"
         />
         <StatCard 
           title="총 고객 수"
           value={summary.totalCustomers.toLocaleString()}
           icon={Users} 
           change="-1.2%" 
-          changeType="decrease" 
-          description="지난 달 대비"
+          bgColor="bg-gradient-to-br from-green-500 to-green-700"
+          iconColor="text-green-200"
         />
       </div>
 

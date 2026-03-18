@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, useContext } from 'react';
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, User } from 'firebase/auth';
 import { getFirestore, doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -15,10 +15,12 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase
+export const app: FirebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Types
 interface UserProfile {
   userId: string;
   email: string;
@@ -32,13 +34,11 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
+// Context
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export default function AuthProvider({ children }: AuthProviderProps) {
+// Provider Component
+export default function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,19 +66,25 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const login = async (id: string, password: string) => {
     setLoading(true);
     try {
-        const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('userId', '==', id), limit(1));
-        const snapshot = await getDocs(q);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('userId', '==', id), limit(1));
+      const querySnapshot = await getDocs(q);
 
-        if(snapshot.empty){
-            throw new Error('존재하지 않는 아이디입니다.');
-        }
+      if (querySnapshot.empty) {
+        throw new Error('존재하지 않는 아이디입니다.');
+      }
 
-        const email = snapshot.docs[0].data().email;
-        await signInWithEmailAndPassword(auth, email, password);
-      
+      const userDoc = querySnapshot.docs[0];
+      const email = userDoc.data().email;
+
+      if (!email) {
+        throw new Error('사용자 이메일을 찾을 수 없습니다.');
+      }
+
+      await signInWithEmailAndPassword(auth, email, password);
+      // Successful login will be handled by onAuthStateChanged
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error('Login failed:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -86,14 +92,12 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const logout = async () => {
-    setLoading(true);
     try {
       await signOut(auth);
+      // Clearing state and redirecting will be handled by onAuthStateChanged
       router.push('/login');
     } catch (error) {
-      console.error("Logout failed:", error);
-    } finally {
-      setLoading(false);
+      console.error('Logout failed:', error);
     }
   };
 
@@ -101,7 +105,16 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
+
+// Custom Hook
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

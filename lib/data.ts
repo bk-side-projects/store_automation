@@ -1,47 +1,92 @@
-import { Order, Product, Customer } from '../types';
+import { getFirestore, collection, getDocs, getCountFromServer, query, where, orderBy, limit, startAfter, QueryConstraint, DocumentData } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client'; // 수정된 경로
+import { Order, OrderStatus } from '@/types/order';
 
-// Mock Data
-const mockOrders: Order[] = [
-  { id: '#8546', customerName: 'John Doe', date: '2023-11-20', amount: 150.00, status: 'Delivered' },
-  { id: '#8547', customerName: 'Jane Smith', date: '2023-11-21', amount: 250.50, status: 'Processing' },
-  { id: '#8548', customerName: 'Bob Johnson', date: '2023-11-22', amount: 75.25, status: 'Shipped' },
-  { id: '#8549', customerName: 'Alice Williams', date: '2023-11-23', amount: 300.00, status: 'Pending' },
-  { id: '#8550', customerName: 'Charlie Brown', date: '2023-11-24', amount: 50.75, status: 'Delivered' },
-];
+const ordersCollection = collection(db, 'orders');
+const ITEMS_PER_PAGE = 10;
 
-const mockSalesData = [
-    { name: 'Mon', sales: 4000 },
-    { name: 'Tue', sales: 3000 },
-    { name: 'Wed', sales: 5000 },
-    { name: 'Thu', sales: 4500 },
-    { name: 'Fri', sales: 6000 },
-    { name: 'Sat', sales: 8000 },
-    { name: 'Sun', sales: 7500 },
-];
+// 쿼리 제약 조건 생성 헬퍼
+function createQueryConstraints(searchQuery?: string, status?: OrderStatus | 'All' | ''): QueryConstraint[] {
+    const constraints: QueryConstraint[] = [];
+    if (status && status !== 'All') {
+        constraints.push(where('status', '==', status));
+    }
+    if (searchQuery) {
+        constraints.push(orderBy('customer'));
+        constraints.push(where('customer', '>=', searchQuery));
+        constraints.push(where('customer', '<=', searchQuery + '\uf8ff'));
+    } else {
+        constraints.push(orderBy('orderDate', 'desc'));
+    }
+    return constraints;
+}
 
-// Mock API Functions
+// 총 페이지 수 계산
+export async function getOrdersTotalPages({ searchQuery = '', status = '' }: { searchQuery?: string; status?: OrderStatus | 'All' | '' }): Promise<number> {
+    const constraints = createQueryConstraints(searchQuery, status);
+    const countQuery = query(ordersCollection, ...constraints);
+    const snapshot = await getCountFromServer(countQuery);
+    const totalCount = snapshot.data().count;
+    return Math.ceil(totalCount / ITEMS_PER_PAGE);
+}
+
+// 특정 페이지의 주문 데이터 가져오기
+export async function getOrders({ searchQuery = '', status = '', currentPage = 1 }: { searchQuery?: string; status?: OrderStatus | 'All' | ''; currentPage?: number }): Promise<Order[]> {
+    const constraints = createQueryConstraints(searchQuery, status);
+
+    if (currentPage > 1) {
+        const previousPageLimit = (currentPage - 1) * ITEMS_PER_PAGE;
+        const previousDocsQuery = query(ordersCollection, ...constraints, limit(previousPageLimit));
+        const previousDocsSnapshot = await getDocs(previousDocsQuery);
+        const lastVisible = previousDocsSnapshot.docs[previousDocsSnapshot.docs.length - 1];
+        if (lastVisible) {
+            constraints.push(startAfter(lastVisible));
+        }
+    }
+
+    constraints.push(limit(ITEMS_PER_PAGE));
+    const finalQuery = query(ordersCollection, ...constraints);
+
+    const querySnapshot = await getDocs(finalQuery);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
+}
+
+
+// 모든 주문 데이터를 가져오는 내부 함수
+async function _fetchAllOrders(): Promise<Order[]> {
+  const q = query(ordersCollection, orderBy('orderDate', 'desc'));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
+}
+
+// 대시보드 요약 지표 가져오기
 export async function getSummaryMetrics() {
-  // Simulate network delay
-  await new Promise(res => setTimeout(res, 500));
-  const totalRevenue = mockOrders.reduce((sum, order) => sum + order.amount, 0);
-  const totalOrders = mockOrders.length;
-  const totalCustomers = new Set(mockOrders.map(o => o.customerName)).size;
-
-  return {
-    totalRevenue,
-    totalOrders,
-    totalCustomers,
-  };
+  const allOrders = await _fetchAllOrders();
+  const validOrders = allOrders.filter(o => o.status !== '주문 취소');
+  const totalRevenue = validOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+  const totalOrders = validOrders.length;
+  const totalCustomers = new Set(validOrders.map(o => o.customer)).size;
+  return { totalRevenue, totalOrders, totalCustomers };
 }
 
+// 최근 5개 주문 가져오기
 export async function getRecentOrders(): Promise<Order[]> {
-  // Simulate network delay
-  await new Promise(res => setTimeout(res, 800));
-  return mockOrders.slice(0, 5);
+  const q = query(ordersCollection, orderBy('orderDate', 'desc'), limit(5));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
 }
 
+// 월별 매출 데이터 가져오기
 export async function getSalesData() {
-    // Simulate network delay
-    await new Promise(res => setTimeout(res, 1200));
-    return mockSalesData;
+  const allOrders = await _fetchAllOrders();
+  const validOrders = allOrders.filter(o => o.status !== '주문 취소');
+  const salesByMonth: { [key: string]: number } = {};
+  validOrders.forEach(order => {
+    const month = new Date(order.orderDate).toLocaleString('default', { month: 'long' });
+    salesByMonth[month] = (salesByMonth[month] || 0) + order.totalPrice;
+  });
+  const salesData = Object.entries(salesByMonth).map(([name, sales]) => ({ name, sales }));
+  const monthOrder = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+  salesData.sort((a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name));
+  return salesData;
 }

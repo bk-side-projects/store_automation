@@ -1,41 +1,64 @@
-'use client';
+export const dynamic = 'force-dynamic';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { getOrders, getOrdersTotalPages } from '@/lib/data';
+import OrdersTable from '@/components/dashboard/OrdersTable';
+import Search from '@/components/common/Search';
+import StatusFilter from '@/components/common/StatusFilter';
+import Pagination from '@/components/common/Pagination';
+import { addOrder } from '@/app/dashboard/actions';
+import { PlusCircle } from 'lucide-react';
+import { OrderStatus } from '@/types/order';
 
-export default function DashboardPage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+export default async function DashboardPage({ 
+  searchParams 
+}: { 
+  searchParams?: { 
+    query?: string;
+    status?: OrderStatus | 'All';
+    page?: string;
+  }; 
+}) {
+  const searchQuery = searchParams?.query || '';
+  const status = searchParams?.status || 'All';
+  const currentPage = Number(searchParams?.page) || 1;
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/');
-    }
-  }, [user, loading, router]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>로딩 중...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null; // 리디렉션이 처리될 때까지 아무것도 렌더링하지 않음
-  }
+  const [orders, totalPages] = await Promise.all([
+    getOrders({ searchQuery, status, currentPage }),
+    getOrdersTotalPages({ searchQuery, status })
+  ]);
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-primary mb-4">
-        대시보드
-      </h1>
-      <div className="p-6 bg-white rounded-lg shadow-md">
-        <p className="text-secondary">
-          {`환영합니다, ${user.displayName || user.email}님! 관리자 페이지에 오신 것을 환영합니다.`}
-        </p>
-        {/* 여기에 다양한 관리자용 컴포넌트와 데이터를 추가할 수 있습니다. */}
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">전체 주문</h1>
+        <p className="text-gray-500 mt-1">모든 주문 내역을 관리합니다.</p>
+      </div>
+      
+      <div className="flex justify-between items-center mb-4">
+        <div className="w-full max-w-md">
+          <Search placeholder="고객 이름으로 검색..." />
+        </div>
+        <form action={addOrder}>
+          <button 
+            type="submit"
+            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-3 rounded-lg font-semibold shadow-md hover:bg-blue-700 transition-colors duration-200 whitespace-nowrap"
+          >
+            <PlusCircle size={20} />
+            새 주문 추가
+          </button>
+        </form>
+      </div>
+
+      <div className="mb-4">
+        <StatusFilter />
+      </div>
+
+      <div className="bg-white p-6 rounded-2xl shadow-md">
+        <OrdersTable orders={orders} />
+      </div>
+
+      <div className="mt-8">
+        <Pagination totalPages={totalPages} />
       </div>
     </div>
   );

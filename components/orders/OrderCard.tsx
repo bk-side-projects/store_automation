@@ -13,12 +13,14 @@ const getStatusBadgeVariant = (status: Order['status']) => {
   switch (status) {
     case '접수':
       return 'default';
-    case '준비중':
+    case '처리중':
       return 'secondary';
-    case '출고':
+    case '배송중':
       return 'destructive';
     case '완료':
       return 'outline';
+    case '주문 취소':
+      return 'destructive';
     default:
       return 'default';
   }
