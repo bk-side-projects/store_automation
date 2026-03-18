@@ -23,29 +23,54 @@ const navItems = [
   { href: '/users', icon: Users, label: '고객 관리' },
 ];
 
+const GlobalLoader = () => (
+  <div className="flex items-center justify-center min-h-screen bg-slate-100">
+    <div className="text-xl font-semibold text-slate-700">Loading...</div>
+  </div>
+);
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { userProfile, loading, logout } = useAuth();
+  const { userProfile, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
+  // --- Redirect Logic ---
   useEffect(() => {
-    if (!loading && !userProfile) {
+    if (loading) return; // Wait for auth state to be resolved
+
+    const isAuthPage = pathname === '/login' || pathname === '/signup';
+
+    // If user is not logged in and not on an auth page, redirect to login
+    if (!userProfile && !isAuthPage) {
       router.push('/login');
     }
-  }, [userProfile, loading, router]);
 
-  if (loading || !userProfile) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-100">
-        <div className="text-xl font-semibold text-slate-700">Loading...</div>
-      </div>
-    );
+    // If user is logged in and on an auth page, redirect to dashboard
+    if (userProfile && isAuthPage) {
+      router.push('/dashboard');
+    }
+  }, [userProfile, loading, router, pathname]);
+
+  // --- Render Logic ---
+  const isAuthPage = pathname === '/login' || pathname === '/signup';
+
+  // Define states where a loader should be shown to prevent content flashing
+  const isTransitioning = 
+    loading || // 1. Still loading auth state
+    (!isAuthPage && !userProfile) || // 2. On a protected page, but no user (will be redirected)
+    (isAuthPage && userProfile); // 3. On an auth page, but has user (will be redirected)
+
+  if (isTransitioning) {
+    return <GlobalLoader />;
   }
-  
-  if (pathname === '/login' || pathname === '/signup') {
+
+  // If on an auth page (and not logged in), render children directly
+  if (isAuthPage) {
     return <>{children}</>;
   }
+
+  // --- Main App Layout (for authenticated users on protected pages) ---
 
   const Sidebar = () => (
     <>
@@ -78,7 +103,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="mt-auto">
-          <button onClick={logout} className="w-full flex items-center p-3 rounded-lg transition-colors hover:bg-red-500/80 hover:text-white text-red-400 font-bold text-lg">
+          <button onClick={() => router.push('/logout')} className="w-full flex items-center p-3 rounded-lg transition-colors hover:bg-red-500/80 hover:text-white text-red-400 font-bold text-lg">
             <LogOut size={22} className="mr-4" />
             <span>로그아웃</span>
           </button>
@@ -134,7 +159,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </HeadlessMenu.Item>
                   <HeadlessMenu.Item>
                     {({ active }) => (
-                      <button onClick={logout} className={`${active ? 'bg-red-500 text-white' : 'text-red-600'} group flex rounded-md items-center w-full px-2 py-2 text-sm font-semibold`}>
+                      <button onClick={() => router.push('/logout')} className={`${active ? 'bg-red-500 text-white' : 'text-red-600'} group flex rounded-md items-center w-full px-2 py-2 text-sm font-semibold`}>
                         로그아웃
                       </button>
                     )}
