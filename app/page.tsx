@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import StatCard from '@/components/dashboard/StatCard';
 import SalesChart from '@/components/dashboard/SalesChart';
 import RecentOrdersTable from '@/components/dashboard/RecentOrdersTable';
