@@ -2,7 +2,7 @@
 
 import { createContext, useState, useEffect, ReactNode, useContext } from 'react';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, User } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, User, IdTokenResult } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
@@ -32,6 +32,7 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   authStatus: AuthStatus;
+  idTokenResult: IdTokenResult | null;
   login: (id: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   signup: (id: string, email: string, password: string) => Promise<void>;
@@ -44,25 +45,29 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
+  const [idTokenResult, setIdTokenResult] = useState<IdTokenResult | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
+        const tokenResult = await user.getIdTokenResult();
+        setIdTokenResult(tokenResult);
+        
         const userDocRef = doc(db, 'users', user.uid);
         const userDocSnap = await getDoc(userDocRef);
+
         if (userDocSnap.exists()) {
           setUserProfile(userDocSnap.data() as UserProfile);
           setAuthStatus('authenticated');
         } else {
-          // This case might happen if user is created in Auth but not in Firestore yet.
-          // Or if there is an error during signup.
           setUserProfile(null);
           setAuthStatus('unauthenticated');
         }
       } else {
         setUserProfile(null);
+        setIdTokenResult(null);
         setAuthStatus('unauthenticated');
       }
     });
@@ -111,7 +116,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     // onAuthStateChanged will handle the rest.
   };
 
-  const value = { user, userProfile, authStatus, login, logout, signup };
+  const value = { user, userProfile, authStatus, idTokenResult, login, logout, signup };
 
   return (
     <AuthContext.Provider value={value}>

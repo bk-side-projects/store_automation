@@ -33,12 +33,11 @@ const GlobalLoader = () => (
 
 // --- Main App Layout Component ---
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { userProfile, authStatus, logout } = useAuth();
+  const { userProfile, authStatus, idTokenResult, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
 
-  // --- Redirection Logic based on authStatus ---
+  // --- Redirection Logic based on authStatus and Admin Claim ---
   useEffect(() => {
     // Don't do anything while auth state is resolving
     if (authStatus === 'loading') return;
@@ -48,13 +47,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // If user is not authenticated, and they are on a protected page, redirect to login.
     if (authStatus === 'unauthenticated' && !isAuthPage) {
       router.push('/login');
+      return;
     }
     
-    // If user is authenticated, and they are on an auth page, redirect to dashboard.
-    if (authStatus === 'authenticated' && isAuthPage) {
-      router.push('/dashboard');
+    // If user is authenticated, check for admin privileges
+    if (authStatus === 'authenticated') {
+      // Redirect from auth pages to dashboard
+      if (isAuthPage) {
+        router.push('/dashboard');
+        return;
+      }
+
+      // If claims are available, check for admin role
+      if (idTokenResult?.claims.admin !== true) {
+        console.warn('Unauthorized access attempt. User does not have admin privileges.');
+        logout(); // Force logout
+        // Optionally, add a query param to show a message on the login page
+        router.push('/login?error=unauthorized');
+      }
     }
-  }, [authStatus, router, pathname]);
+  }, [authStatus, router, pathname, idTokenResult, logout]);
 
   // --- Render Logic ---
   // Always show loader if auth state is still loading.
@@ -64,23 +76,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isAuthPage = pathname === '/login' || pathname === '/signup';
 
-  // If user is authenticated, show the main layout, unless they are on an auth page (redirecting).
-  if (authStatus === 'authenticated') {
+  // If user is authenticated and has admin rights, show the main layout.
+  if (authStatus === 'authenticated' && idTokenResult?.claims.admin === true) {
     if (isAuthPage) {
       // While redirecting from /login to /dashboard, show a loader.
       return <GlobalLoader />;
     } 
-    // This is the main view for authenticated users on protected pages.
     return <ProtectedLayout>{children}</ProtectedLayout>;
   }
 
-  // If user is unauthenticated, show the auth page, unless they are on a protected page (redirecting).
-  if (authStatus === 'unauthenticated') {
+  // If user is unauthenticated or does not have admin rights, show the auth page or a loader.
+  if (authStatus === 'unauthenticated' || (authStatus === 'authenticated' && idTokenResult?.claims.admin !== true)) {
     if (!isAuthPage) {
-      // While redirecting from a protected page to /login, show a loader.
+      // While redirecting from a protected page, show a loader.
       return <GlobalLoader />;
     }
-    // This is the main view for unauthenticated users on auth pages.
     return <>{children}</>;
   }
 
