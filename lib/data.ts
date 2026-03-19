@@ -68,8 +68,14 @@ async function _fetchAllOrders(): Promise<Order[]> {
 
   return querySnapshot.docs.map(doc => {
     const data = doc.data() as DocumentData;
-    if (data.orderDate && data.orderDate instanceof Timestamp) {
-        data.orderDate = data.orderDate.toDate();
+    // Firestore Timestamp를 JavaScript Date 객체로 변환하고, 항상 유효한 Date 객체인지 확인
+    if (data.orderDate) {
+        if (data.orderDate instanceof Timestamp) {
+            data.orderDate = data.orderDate.toDate();
+        } else {
+            // 이미 문자열 등으로 변환된 경우를 대비하여 Date 객체로 다시 생성
+            data.orderDate = new Date(data.orderDate);
+        }
     }
     return { id: doc.id, ...data } as Order;
   });
@@ -92,8 +98,12 @@ export async function getRecentOrders(): Promise<Order[]> {
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => {
     const data = doc.data() as DocumentData;
-    if (data.orderDate && data.orderDate instanceof Timestamp) {
-        data.orderDate = data.orderDate.toDate();
+    if (data.orderDate) {
+        if (data.orderDate instanceof Timestamp) {
+            data.orderDate = data.orderDate.toDate();
+        } else {
+            data.orderDate = new Date(data.orderDate);
+        }
     }
     return { id: doc.id, ...data } as Order;
   });
@@ -106,7 +116,7 @@ export async function getSalesData() {
     const salesByMonth: { [key: string]: number } = {};
   
     validOrders.forEach(order => {
-      // toDate()가 이미 _fetchAllOrders에서 호출되었으므로 직접 사용 가능
+      // 런타임 시점에도 안전하도록 new Date()로 한번 더 감싸줍니다.
       const orderDate = new Date(order.orderDate);
       const month = orderDate.toLocaleString('ko-KR', { month: 'long' });
       salesByMonth[month] = (salesByMonth[month] || 0) + order.totalPrice;
