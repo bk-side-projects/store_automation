@@ -107,7 +107,7 @@ export async function getSalesData() {
   
     validOrders.forEach(order => {
       // toDate()가 이미 _fetchAllOrders에서 호출되었으므로 직접 사용 가능
-      const orderDate = order.orderDate as Date;
+      const orderDate = new Date(order.orderDate);
       const month = orderDate.toLocaleString('ko-KR', { month: 'long' });
       salesByMonth[month] = (salesByMonth[month] || 0) + order.totalPrice;
     });
