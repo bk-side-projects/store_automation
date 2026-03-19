@@ -4,7 +4,17 @@
     "source": ".",
     "region": "asia-east1",
     "allow-unauthenticated": true,
-    "alwaysDeployFromSource": true,
+    "resources": {
+        "memoryMiB": 512
+    },
+    "env": {
+        "NEXT_PUBLIC_FIREBASE_API_KEY": "AIzaSyCevwC6vpIX88UF3FVxtRtu4lqipuOj2VQ",
+        "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "store-automation-dee9e.firebaseapp.com",
+        "NEXT_PUBLIC_FIREBASE_PROJECT_ID": "store-automation-dee9e",
+        "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET": "store-automation-dee9e.firebasestorage.app",
+        "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "284307011517",
+        "NEXT_PUBLIC_FIREBASE_APP_ID": "1:284307011517:web:2cad4401f2d69e8deb04d4"
+    },
     "ignore": [
       "firebase.json",
       ".firebase/**",

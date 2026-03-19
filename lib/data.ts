@@ -1,11 +1,10 @@
-import { getFirestore, collection, getDocs, getCountFromServer, query, where, orderBy, limit, startAfter, QueryConstraint, DocumentData } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client'; // 수정된 경로
+import { collection, query, where, orderBy, limit, startAfter, getDocs,getCountFromServer, QueryConstraint, DocumentData, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client'; // 클라이언트 SDK용 db 인스턴스를 가져옵니다.
 import { Order, OrderStatus } from '@/types/order';
 
-const ordersCollection = collection(db, 'orders');
 const ITEMS_PER_PAGE = 10;
 
-// 쿼리 제약 조건 생성 헬퍼
+// 쿼리 제약 조건 생성 헬퍼 (클라이언트 SDK에 맞게 수정)
 function createQueryConstraints(searchQuery?: string, status?: OrderStatus | 'All' | ''): QueryConstraint[] {
     const constraints: QueryConstraint[] = [];
     if (status && status !== 'All') {
@@ -21,17 +20,19 @@ function createQueryConstraints(searchQuery?: string, status?: OrderStatus | 'Al
     return constraints;
 }
 
-// 총 페이지 수 계산
+// 총 페이지 수 계산 (클라이언트 SDK 사용)
 export async function getOrdersTotalPages({ searchQuery = '', status = '' }: { searchQuery?: string; status?: OrderStatus | 'All' | '' }): Promise<number> {
+    const ordersCollection = collection(db, 'orders');
     const constraints = createQueryConstraints(searchQuery, status);
-    const countQuery = query(ordersCollection, ...constraints);
-    const snapshot = await getCountFromServer(countQuery);
+    const q = query(ordersCollection, ...constraints);
+    const snapshot = await getCountFromServer(q);
     const totalCount = snapshot.data().count;
     return Math.ceil(totalCount / ITEMS_PER_PAGE);
 }
 
-// 특정 페이지의 주문 데이터 가져오기
-export async function getOrders({ searchQuery = '', status = '', currentPage = 1 }: { searchQuery?: string; status?: OrderStatus | 'All' | ''; currentPage?: number }): Promise<Order[]> {
+// 특정 페이지의 주문 데이터 가져오기 (클라이언트 SDK 사용)
+export async function getOrders({ searchQuery = '', status = '', currentPage = 1 }: { searchQuery?: string; status?: OrderStatus | 'All' | '' ; currentPage?: number }): Promise<Order[]> {
+    const ordersCollection = collection(db, 'orders');
     const constraints = createQueryConstraints(searchQuery, status);
 
     if (currentPage > 1) {
@@ -48,15 +49,30 @@ export async function getOrders({ searchQuery = '', status = '', currentPage = 1
     const finalQuery = query(ordersCollection, ...constraints);
 
     const querySnapshot = await getDocs(finalQuery);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
+    return querySnapshot.docs.map(doc => {
+        const data = doc.data() as DocumentData;
+        // Firestore Timestamp를 JavaScript Date 객체로 변환
+        if (data.orderDate && data.orderDate instanceof Timestamp) {
+            data.orderDate = data.orderDate.toDate();
+        }
+        return { id: doc.id, ...data } as Order;
+    });
 }
 
 
-// 모든 주문 데이터를 가져오는 내부 함수
+// 모든 주문 데이터를 가져오는 내부 함수 (클라이언트 SDK 사용)
 async function _fetchAllOrders(): Promise<Order[]> {
+  const ordersCollection = collection(db, 'orders');
   const q = query(ordersCollection, orderBy('orderDate', 'desc'));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
+
+  return querySnapshot.docs.map(doc => {
+    const data = doc.data() as DocumentData;
+    if (data.orderDate && data.orderDate instanceof Timestamp) {
+        data.orderDate = data.orderDate.toDate();
+    }
+    return { id: doc.id, ...data } as Order;
+  });
 }
 
 // 대시보드 요약 지표 가져오기
@@ -71,22 +87,34 @@ export async function getSummaryMetrics() {
 
 // 최근 5개 주문 가져오기
 export async function getRecentOrders(): Promise<Order[]> {
+  const ordersCollection = collection(db, 'orders');
   const q = query(ordersCollection, orderBy('orderDate', 'desc'), limit(5));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
+  return querySnapshot.docs.map(doc => {
+    const data = doc.data() as DocumentData;
+    if (data.orderDate && data.orderDate instanceof Timestamp) {
+        data.orderDate = data.orderDate.toDate();
+    }
+    return { id: doc.id, ...data } as Order;
+  });
 }
 
 // 월별 매출 데이터 가져오기
 export async function getSalesData() {
-  const allOrders = await _fetchAllOrders();
-  const validOrders = allOrders.filter(o => o.status !== '주문 취소');
-  const salesByMonth: { [key: string]: number } = {};
-  validOrders.forEach(order => {
-    const month = new Date(order.orderDate).toLocaleString('default', { month: 'long' });
-    salesByMonth[month] = (salesByMonth[month] || 0) + order.totalPrice;
-  });
-  const salesData = Object.entries(salesByMonth).map(([name, sales]) => ({ name, sales }));
-  const monthOrder = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-  salesData.sort((a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name));
-  return salesData;
+    const allOrders = await _fetchAllOrders();
+    const validOrders = allOrders.filter(o => o.status !== '주문 취소');
+    const salesByMonth: { [key: string]: number } = {};
+  
+    validOrders.forEach(order => {
+      // toDate()가 이미 _fetchAllOrders에서 호출되었으므로 직접 사용 가능
+      const orderDate = order.orderDate as Date;
+      const month = orderDate.toLocaleString('ko-KR', { month: 'long' });
+      salesByMonth[month] = (salesByMonth[month] || 0) + order.totalPrice;
+    });
+  
+    const salesData = Object.entries(salesByMonth).map(([name, sales]) => ({ name, sales }));
+    const monthOrder = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+    salesData.sort((a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name));
+  
+    return salesData;
 }

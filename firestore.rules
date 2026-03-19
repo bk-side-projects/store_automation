@@ -1,8 +1,22 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // 기본적으로 모든 접근을 차단합니다.
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2024, 7, 26);
+      allow read, write: if false;
+    }
+
+    // 'orders' 컬렉션에 대한 규칙
+    // 이 규칙은 모든 사용자가 주문을 읽을 수 있도록 허용합니다.
+    // 실제 프로덕션 앱에서는 사용자가 자신의 주문만 볼 수 있도록 더 제한적인 규칙이 필요합니다.
+    // 예: allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+    match /orders/{orderId} {
+      allow read: if true; 
+      // 쓰기 작업(생성, 업데이트, 삭제)은 인증된 사용자에게만 허용됩니다.
+      // 프로덕션 환경에서는 특정 역할(예: 'admin')을 가진 사용자만 허용하도록 해야 합니다.
+      allow write: if request.auth != null;
     }
   }
 }

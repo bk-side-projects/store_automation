@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Mail, Lock, LogIn, Ship } from 'lucide-react';
+import { Mail, Lock, LogIn } from 'lucide-react';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -35,8 +36,14 @@ export default function LoginPage() {
         
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-block p-4 bg-blue-600 rounded-full mb-4">
-            <Ship className="w-8 h-8 text-white" />
+          <div className="inline-block mb-4">
+            <Image
+              src="/assets/logo.png"
+              alt="통영아재수산 로고"
+              width={80}
+              height={80}
+              className="rounded-full"
+            />
           </div>
           <h1 className="text-3xl font-bold text-gray-800">통영아재수산 WMS</h1>
           <p className="text-gray-500 mt-2">관리자 대시보드에 오신 것을 환영합니다.</p>
